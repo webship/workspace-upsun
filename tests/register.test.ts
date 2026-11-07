@@ -33,6 +33,7 @@ function fakeApi(root: string) {
     addFragment: (fn: any) => calls.fragments.push(fn),
     addPage: (re: RegExp, fn: any) => calls.pages.push({ re, fn }),
     addFolderSetup: (s: any) => calls.setups.push(s),
+    addCss: () => {},
   };
   return { api, calls };
 }
@@ -49,7 +50,7 @@ test('register() asks for exactly the surface the plugin owns', () => {
   register(api as any);
   assert.deepStrictEqual(Object.keys(calls.rowMenus), ['upsun']);
   assert.deepStrictEqual(calls.rowMenus.upsun.spec, { label: 'UPSUN', row: 0 });
-  assert.deepStrictEqual(Object.keys(calls.actions).sort(), ['activities', 'environments', 'envs', 'logs', 'pull', 'pull-form', 'site-url', 'status']);
+  assert.deepStrictEqual(Object.keys(calls.actions).sort(), ['environments', 'envs', 'pull', 'pull-form', 'tool-activities', 'tool-deploy', 'tool-logs', 'tool-status']);
   assert.strictEqual(calls.chips.length, 1);
   assert.strictEqual(calls.fragments.length, 1);
   assert.ok(calls.pages[0].re.test('/upsun-site/dev/site1'));
@@ -65,7 +66,7 @@ test('the row menu shows only where the type allows upsun and the folder has the
   const shown = calls.rowMenus.upsun.fn({ ...ctx, allowed: new Set(['upsun']) });
   assert.match(shown, /UPSUN/);
   assert.match(shown, /not linked/, 'an unlinked project still gets the menu, and says so');
-  assert.match(shown, /\/actions\/p\/upsun\/status/, 'actions are namespaced under the plugin');
+  assert.match(shown, /\/actions\/p\/upsun\/tool-status/, 'actions are namespaced under the plugin');
   assert.strictEqual(calls.rowMenus.upsun.fn({ ...ctx, allowed: new Set(['ddev']) }), null, 'a type that does not allow upsun gets nothing');
   fs.unlinkSync(path.join(root, 'dev', 'cmd-tools-upsun.sh'));
   assert.strictEqual(calls.rowMenus.upsun.fn({ ...ctx, allowed: new Set(['upsun']) }), null, 'no command in the folder, no menu');

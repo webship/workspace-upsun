@@ -11,7 +11,7 @@ import { upsunLinkOf } from '../src/lib/link';
 // The rule every plugin keeps: nothing required from outside the package, so the command line and
 // the dashboard see the same code and the package can be installed from npm on its own.
 test('the package requires nothing outside itself', () => {
-  for (const f of ['src/index.ts', 'src/lib/link.ts', 'src/lib/environments.ts']) {
+  for (const f of ['src/index.ts', 'src/lib/link.ts', 'src/lib/provider.ts']) {
     const src = fs.readFileSync(path.join(PKG, f), 'utf8');
     assert.doesNotMatch(src, /from ['"]\.\.\/\.\./, `${f} reaches outside the package`);
     assert.doesNotMatch(src, /from ['"](\.\.\/)+(html|jobs|workspaces|format|validate|command-block)['"]/, `${f} imports a dashboard module`);
@@ -37,6 +37,20 @@ test('the manifest says what the installer has to place, and every named file sh
   const pkg = JSON.parse(fs.readFileSync(path.join(PKG, 'package.json'), 'utf8'));
   const m = pkg.workspacePlugin;
   assert.strictEqual(m.name, 'upsun');
-  const files: string[] = [m.settingsTemplate, m.labels, ...m.commands.files, ...m.scripts.functions, ...m.scripts.args, ...m.scripts.machine, m.scripts.hostInstall, ...m.ddev.compose, ...m.themes, ...m.css, ...(m.features || [])];
+  const files: string[] = [m.settingsTemplate, m.labels, ...m.commands.files, ...m.scripts.functions, ...m.scripts.args, ...m.scripts.machine, m.scripts.hostInstall, ...m.ddev.compose, ...m.themes, ...(m.css || []), ...(m.features || [])];
   for (const f of files) assert.ok(fs.existsSync(path.join(PKG, f)), `${f} is in the package`);
+});
+
+test('the provider says what Upsun is: the id, the script, the verbs, the pulls and the console', () => {
+  const { upsunProvider } = require('../src/lib/provider');
+  const p = upsunProvider({ name: 'upsun', settings: { read: () => ({ cli_token: 'CHANGE_ME' }) }, lib: {} });
+  assert.strictEqual(p.id, 'upsun');
+  assert.strictEqual(p.script, 'cmd-tools-upsun.sh');
+  assert.deepStrictEqual(Object.keys(p.tools), ['status', 'activities', 'logs', 'deploy']);
+  assert.deepStrictEqual(p.tools.deploy.args, ['--push']);
+  assert.deepStrictEqual(p.pull.dbArgs('main'), ['--environment', 'main', '--pull-db']);
+  assert.strictEqual(p.consoleUrl({ id: 'abc' }), 'https://console.upsun.com/projects/abc');
+  assert.strictEqual(p.jobEnv(), null, 'CHANGE_ME is no token');
+  assert.match(p.errorHint('The provided AP\n  I token could not be authorized'), /ATATT/);
+  assert.strictEqual(p.errorHint('other'), 'other');
 });

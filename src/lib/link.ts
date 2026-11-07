@@ -1,14 +1,16 @@
 /**
  * Whether a project is linked to Upsun, and to what.
  *
- * Read from the project's own `.upsun/local/project.yaml` and its git remote, and memoised for a
- * few seconds because a page of thirty rows would otherwise stat the same files thirty times.
+ * Read from the project's own `.upsun/local/project.yaml` and its git remote. The hosting base
+ * memoises the answer per render, so this reads the files every time it is asked.
  */
 
 import fs from 'fs';
 import path from 'path';
 
-export interface UpsunLink {
+import type { HostingLink } from '@webship/workspace-hosting';
+
+export interface UpsunLink extends HostingLink {
   id: string | null;
   host: string | null;
   remote: string | null;
@@ -19,15 +21,9 @@ export interface UpsunLink {
   remoteNotUpsun: boolean;
 }
 
-let _upsunCache = new Map<string, UpsunLink | null>();
-let _upsunCacheAt = 0;
-
-export function upsunLinkOf(dir: string, project: string): UpsunLink | null {
-  const now = Date.now();
-  if (now - _upsunCacheAt > 5000) { _upsunCache = new Map(); _upsunCacheAt = now; }
-  const k = `${dir}/${project}`;
-  if (_upsunCache.has(k)) return _upsunCache.get(k);
-  const root = path.join(dir, project);
+/** The link of the project at `projectDir`; or `(workspaceDir, project)`, the older spelling. */
+export function upsunLinkOf(dir: string, project?: string): UpsunLink | null {
+  const root = project === undefined ? dir : path.join(dir, project);
   let id: string | null = null; let host: string | null = null; let remote: string | null = null;
   try {
     const y = fs.readFileSync(path.join(root, '.upsun', 'local', 'project.yaml'), 'utf8');
@@ -58,9 +54,9 @@ export function upsunLinkOf(dir: string, project: string): UpsunLink | null {
   const link: UpsunLink | null = (id || remote) ? {
     id, host, remote, remoteId, env, branch,
     mismatch: !!(id && remoteId && id !== remoteId),
+    mismatchNote: id && remoteId && id !== remoteId ? `The git remote points at ${remoteId}` : undefined,
     remoteNotUpsun: !!(remote && !/platform\.sh|upsun/.test(remote)),
   } : null;
-  _upsunCache.set(k, link);
   return link;
 }
 
