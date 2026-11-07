@@ -1,18 +1,20 @@
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import test from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
-const { upsunLinkOf } = require('../lib/link');
+const PKG = fs.existsSync(path.join(__dirname, '..', 'package.json')) ? path.join(__dirname, '..') : path.join(__dirname, '..', '..');
+
+import { upsunLinkOf } from '../src/lib/link';
 
 // The rule every plugin keeps: nothing required from outside the package, so the command line and
 // the dashboard see the same code and the package can be installed from npm on its own.
 test('the package requires nothing outside itself', () => {
-  for (const f of ['index.js', 'lib/link.js', 'lib/environments.js']) {
-    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
-    assert.doesNotMatch(src, /require\(['"]\.\.\/\.\./, `${f} reaches outside the package`);
-    assert.doesNotMatch(src, /require\(['"]\.\.\/(html|jobs|workspaces|format|validate|command-block)['"]\)/, `${f} requires a dashboard module`);
+  for (const f of ['src/index.ts', 'src/lib/link.ts', 'src/lib/environments.ts']) {
+    const src = fs.readFileSync(path.join(PKG, f), 'utf8');
+    assert.doesNotMatch(src, /from ['"]\.\.\/\.\./, `${f} reaches outside the package`);
+    assert.doesNotMatch(src, /from ['"](\.\.\/)+(html|jobs|workspaces|format|validate|command-block)['"]/, `${f} imports a dashboard module`);
   }
 });
 
@@ -32,9 +34,9 @@ test('a project is linked when .upsun/local/project.yaml names an id, and the br
 });
 
 test('the manifest says what the installer has to place, and every named file ships', () => {
-  const pkg = require('../package.json');
+  const pkg = JSON.parse(fs.readFileSync(path.join(PKG, 'package.json'), 'utf8'));
   const m = pkg.workspacePlugin;
   assert.strictEqual(m.name, 'upsun');
-  const files = [m.settingsTemplate, m.labels, ...m.commands.files, ...m.scripts.functions, ...m.scripts.args, ...m.scripts.machine, m.scripts.hostInstall, ...m.ddev.compose, ...m.themes, ...m.css];
-  for (const f of files) assert.ok(fs.existsSync(path.join(__dirname, '..', f)), `${f} is in the package`);
+  const files: string[] = [m.settingsTemplate, m.labels, ...m.commands.files, ...m.scripts.functions, ...m.scripts.args, ...m.scripts.machine, m.scripts.hostInstall, ...m.ddev.compose, ...m.themes, ...m.css, ...(m.features || [])];
+  for (const f of files) assert.ok(fs.existsSync(path.join(PKG, f)), `${f} is in the package`);
 });

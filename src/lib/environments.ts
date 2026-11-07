@@ -2,15 +2,19 @@
  * The Upsun bridge: environments, live URLs, and getting a database and files into the local site.
  *
  * A factory over the dashboard's `api`: everything it needs comes through `api.lib` and
- * `api.settings`, so this file requires nothing outside the package.
+ * `api.settings`, so this file imports nothing from the dashboard.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import type { ActionContext, PluginApi } from '@webship/workspace-plugin-api';
 
-const { upsunLinkOf } = require('./link');
+import { upsunLinkOf } from './link';
 
-module.exports = function environments(api) {
+export interface EnvRow { title: string; envId: string; status: string; url?: string }
+export interface EnvInfo { id: string | null; rows: EnvRow[]; branch?: string | null; env?: string | null; why?: string }
+
+export default function environments(api: PluginApi) {
   const { esc, cliError, ROOT, workspaceDir, run, listProjects, startInScreen, screenStartedHtml, NAME_RE, commandBlock } = api.lib;
   const settings = () => api.settings.read() || {};
   const post = (name) => `/actions/p/${api.name}/${name}`;
@@ -22,7 +26,7 @@ module.exports = function environments(api) {
   // client projects, which is not something to hand a web request. A pull is also destructive
   // locally (the DDEV database is replaced) and touches client data, so the honest thing is the
   // exact command, with the environment list beside it.
-async function upsun_environments({ form, res, send, workspace, pathname }) {
+async function upsun_environments({ form, send, workspace }: ActionContext) {
     const dir = workspaceDir(workspace);
     const projectName = String(form.projectName || '');
     if (!NAME_RE.test(projectName) || !listProjects(dir).includes(projectName)) {
@@ -48,7 +52,7 @@ async function upsun_environments({ form, res, send, workspace, pathname }) {
 
 // The env the upsun CLI needs in this container: the API token from settings
 // (upsun.cli_token). Injected per job, never into the app environment.
-function upsunJobEnv() {
+function upsunJobEnv(): NodeJS.ProcessEnv | null {
   try {
     const t = String(settings().cli_token || '').trim();
     if (t && t !== 'CHANGE_ME') return { ...process.env, UPSUN_CLI_TOKEN: t };
@@ -60,7 +64,7 @@ function upsunJobEnv() {
 // here, and the message does not say it: the field holds a token of the wrong KIND.
 // An Atlassian token in upsun.cli_token is refused with exactly this wording, which
 // reads like an expiry — so the hint is attached where the field is known.
-function upsunError(out) {
+function upsunError(out: { stdout?: string; stderr?: string }): string {
   const msg = cliError(out.stderr || out.stdout);
   // The CLI hard-wraps its error box at a fixed width and splits words across lines —
   // the real output is "provided AP\n  I token." — so "API token" never appears as a
@@ -75,8 +79,8 @@ function upsunError(out) {
 
 // The environments and their live URLs, cached: a project row cannot pay for
 // two upsun CLI calls per render, and the answer changes rarely.
-const _envCache = new Map();
-async function upsunEnvironments(dir, projectName) {
+const _envCache = new Map<string, EnvInfo>();
+async function upsunEnvironments(dir: string, projectName: string): Promise<EnvInfo | null> {
   const u = upsunLinkOf(dir, projectName);
   if (!u || !u.id) return null;
   const hit = _envCache.get(u.id);
@@ -86,7 +90,7 @@ async function upsunEnvironments(dir, projectName) {
   const out = await run('upsun', ['environment:list', '-p', u.id, '--format', 'csv', '--columns', 'title,id,status', '--no-header'],
     process.env.HOME, { timeoutMs: 60 * 1000, env });
   if (!out.ok) return { id: u.id, rows: [], why: 'list failed' };
-  const rows = String(out.stdout).split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+  const rows: EnvRow[] = String(out.stdout).split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const parts = l.split(',');
     return { title: parts[0], envId: parts[1], status: parts[2] || '' };
   }).filter((r) => r.envId && /^[a-zA-Z0-9._\/-]+$/.test(r.envId));
@@ -97,7 +101,7 @@ async function upsunEnvironments(dir, projectName) {
     const url = String(res.stdout || '').trim().split('\n')[0];
     if (res.ok && /^https?:\/\//.test(url)) r.url = url;
   }));
-  const answer = { id: u.id, rows, branch: u.branch, env: u.env };
+  const answer: EnvInfo = { id: u.id, rows, branch: u.branch, env: u.env };
   _envCache.set(u.id, answer);
   // Five minutes is long enough to render a page many times, short enough that a
   // new branch shows up without a restart.
@@ -109,7 +113,7 @@ async function upsunEnvironments(dir, projectName) {
 // in parallel for the active ones, rendered into the modal.
 // Every environment with its HUMAN name and its own live site link — resolved
 // in parallel for the active ones, rendered into the modal.
-async function upsun_envs({ form, send, workspace }) {
+async function upsun_envs({ form, send, workspace }: ActionContext) {
   const dir = workspaceDir(workspace);
   const projectName = String(form.projectName || '');
   if (!NAME_RE.test(projectName) || !listProjects(dir).includes(projectName)) {
@@ -122,7 +126,7 @@ async function upsun_envs({ form, send, workspace }) {
   const out = await run('upsun', ['environment:list', '-p', u.id, '--format', 'csv', '--columns', 'title,id,status', '--no-header'],
     process.env.HOME, { timeoutMs: 60 * 1000, env });
   if (!out.ok) return send(`<div class="msg error">Could not list the environments: <pre>${esc(upsunError(out))}</pre></div>`, 502);
-  const rows = String(out.stdout).split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+  const rows: EnvRow[] = String(out.stdout).split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const parts = l.split(',');
     return { title: parts[0], envId: parts[1], status: parts[2] || '' };
   }).filter((r) => r.envId && /^[a-zA-Z0-9._\/-]+$/.test(r.envId));
@@ -151,7 +155,7 @@ async function upsun_envs({ form, send, workspace }) {
 
 // The live URL of the environment the local code is on (or the selected one):
 // one upsun call, answered as a clickable link.
-async function upsun_site_url({ form, send, workspace }) {
+async function upsun_site_url({ form, send, workspace }: ActionContext) {
   const dir = workspaceDir(workspace);
   const projectName = String(form.projectName || '');
   if (!NAME_RE.test(projectName) || !listProjects(dir).includes(projectName)) {
@@ -174,7 +178,7 @@ async function upsun_site_url({ form, send, workspace }) {
 
 // The pull modal: pick the environment (live list), choose database and/or
 // files, see exactly what a pull replaces before confirming.
-async function upsun_pull_form({ form, send, workspace }) {
+async function upsun_pull_form({ form, send, workspace }: ActionContext) {
   const dir = workspaceDir(workspace);
   const projectName = String(form.projectName || '');
   if (!NAME_RE.test(projectName) || !listProjects(dir).includes(projectName)) {
@@ -239,7 +243,7 @@ async function upsun_pull_form({ form, send, workspace }) {
 }
 
 // The pull itself: the workspace tool, in an inline job with honest phases.
-async function upsun_pull({ form, send, workspace }) {
+async function upsun_pull({ form, send, workspace }: ActionContext) {
   const dir = workspaceDir(workspace);
   const projectName = String(form.projectName || '');
   const environment = String(form.environment || '').trim();

@@ -1,33 +1,38 @@
-const test = require('node:test');
-const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import test from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+import { register } from '../src/index';
+
+// Compiled, these tests run from dist/tests, so the package root is one folder further up.
+const PKG = fs.existsSync(path.join(__dirname, '..', 'package.json')) ? path.join(__dirname, '..') : path.join(__dirname, '..', '..');
 
 // A stand-in for the dashboard's api: records what register() asks for, and answers the few
 // helpers the plugin calls while drawing.
-function fakeApi(root) {
-  const calls = { rowMenus: {}, chips: [], actions: {}, fragments: [], pages: [], setups: [] };
+function fakeApi(root: string) {
+  const calls: { rowMenus: Record<string, any>; chips: any[]; actions: Record<string, any>; fragments: any[]; pages: any[]; setups: any[] } = { rowMenus: {}, chips: [], actions: {}, fragments: [], pages: [], setups: [] };
   const api = {
     name: 'upsun',
     config: {},
     settings: { read: () => ({ cli_token: 'CHANGE_ME' }), set() {}, setList() {} },
     lib: {
-      esc: (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-      workspaceDir: (ws) => path.join(root, ws),
-      listProjects: (dir) => fs.readdirSync(dir),
-      isValidWorkspace: (ws) => /^[a-z0-9_-]+$/.test(ws),
+      esc: (s: unknown) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+      workspaceDir: (ws: string) => path.join(root, ws),
+      listProjects: (dir: string) => fs.readdirSync(dir),
+      isValidWorkspace: (ws: string) => /^[a-z0-9_-]+$/.test(ws),
       screenAction: () => {},
-      iconHtml: (name) => `<i data-icon="${name}"></i>`,
+      iconHtml: (name: string) => `<i data-icon="${name}"></i>`,
       NAME_RE: /^[a-zA-Z0-9_-]+$/,
       ROOT: root, run: async () => ({ ok: false }), startInScreen: async () => ({ ok: true }), screenStartedHtml: () => '', cliError: (s) => s, commandBlock: () => '',
     },
-    addRowMenu: (slot, spec, fn) => { calls.rowMenus[slot] = { spec, fn }; },
-    addProjectChip: (fn) => calls.chips.push(fn),
-    addAction: (name, fn) => { calls.actions[name] = fn; },
-    addFragment: (fn) => calls.fragments.push(fn),
-    addPage: (re, fn) => calls.pages.push({ re, fn }),
-    addFolderSetup: (s) => calls.setups.push(s),
+    addRowMenu: (slot: string, spec: any, fn: any) => { calls.rowMenus[slot] = { spec, fn }; },
+    addProjectChip: (fn: any) => calls.chips.push(fn),
+    addAction: (name: string, fn: any) => { calls.actions[name] = fn; },
+    addFragment: (fn: any) => calls.fragments.push(fn),
+    addPage: (re: RegExp, fn: any) => calls.pages.push({ re, fn }),
+    addFolderSetup: (s: any) => calls.setups.push(s),
   };
   return { api, calls };
 }
@@ -41,7 +46,7 @@ function workspace() {
 
 test('register() asks for exactly the surface the plugin owns', () => {
   const { api, calls } = fakeApi(workspace());
-  require('../index').register(api);
+  register(api as any);
   assert.deepStrictEqual(Object.keys(calls.rowMenus), ['upsun']);
   assert.deepStrictEqual(calls.rowMenus.upsun.spec, { label: 'UPSUN', row: 0 });
   assert.deepStrictEqual(Object.keys(calls.actions).sort(), ['activities', 'environments', 'envs', 'logs', 'pull', 'pull-form', 'site-url', 'status']);
@@ -54,9 +59,9 @@ test('register() asks for exactly the surface the plugin owns', () => {
 test('the row menu shows only where the type allows upsun and the folder has the command', () => {
   const root = workspace();
   const { api, calls } = fakeApi(root);
-  require('../index').register(api);
+  register(api as any);
   const vals = () => 'hx-vals=\'{}\'';
-  const ctx = { key: 'dev', project: 'site1', dir: path.join(root, 'dev'), meta: {}, vals };
+  const ctx: any = { key: 'dev', project: 'site1', dir: path.join(root, 'dev'), meta: {}, vals };
   const shown = calls.rowMenus.upsun.fn({ ...ctx, allowed: new Set(['upsun']) });
   assert.match(shown, /UPSUN/);
   assert.match(shown, /not linked/, 'an unlinked project still gets the menu, and says so');
@@ -69,9 +74,9 @@ test('the row menu shows only where the type allows upsun and the folder has the
 test('the New-folder section links, creates with AI, and refuses a bad id', () => {
   const root = workspace();
   const { api, calls } = fakeApi(root);
-  require('../index').register(api);
+  register(api as any);
   const [setup] = calls.setups;
-  const ctx = { allowed: new Set(['upsun']) };
+  const ctx = { allowed: new Set(['upsun']) } as any;
   assert.match(setup.html('dev', ctx), /name="upsun" value="link"/);
   assert.strictEqual(setup.html('dev', { allowed: new Set() }), '');
   const steps = setup.steps('dev', 'demo1', { upsun: 'link', upsun_id: 'abcd1234efgh5' }, ctx);

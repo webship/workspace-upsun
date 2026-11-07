@@ -10,25 +10,27 @@
  * the dashboard's own files, so it can be installed from npm and removed without a trace.
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import type { FolderSetupContext, Form, PluginApi, RowContext } from '@webship/workspace-plugin-api';
 
-const { upsunLinkOf } = require('./lib/link');
+import { upsunLinkOf } from './lib/link';
+import environments from './lib/environments';
 
-module.exports.register = (api) => {
+export function register(api: PluginApi): void {
   const { esc, workspaceDir, listProjects, isValidWorkspace, screenAction, iconHtml, NAME_RE } = api.lib;
-  const env = require('./lib/environments')(api);
-  const post = (name) => `/actions/p/${api.name}/${name}`;
-  const fragment = (rest) => `/fragments/p/${api.name}/${rest}`;
+  const env = environments(api);
+  const post = (name: string) => `/actions/p/${api.name}/${name}`;
+  const fragment = (rest: string) => `/fragments/p/${api.name}/${rest}`;
   const SCRIPT = 'cmd-tools-upsun.sh';
 
   // Where this plugin shows itself: on rows whose workspace type allows `upsun` AND whose folder
   // has the command the plugin installed (plugins.sh --install puts it in every site workspace).
-  const canUpsun = (key, allowed, dir) => allowed.has('upsun') && fs.existsSync(path.join(dir, SCRIPT));
+  const canUpsun = (key: string, allowed: Set<string>, dir: string) => allowed.has('upsun') && fs.existsSync(path.join(dir, SCRIPT));
 
   // ---- The UPSUN menu on a project row ---------------------------------------------------------
 
-  api.addRowMenu('upsun', { label: 'UPSUN', row: 0 }, ({ key, project: p, dir, allowed, vals }) => {
+  api.addRowMenu('upsun', { label: 'UPSUN', row: 0 }, ({ key, project: p, dir, allowed, vals }: RowContext) => {
     if (!canUpsun(key, allowed, dir)) return null;
     const u = upsunLinkOf(dir, p);
     const caption = !u ? 'not linked' : 'linked';
@@ -128,9 +130,9 @@ module.exports.register = (api) => {
   // ---- New folder: link it to an Upsun project, or create one with AI -----------------------
 
   const UPSUN_ID_RE = /^[a-z0-9]{8,20}$/;
-  const shq = (v) => `'${String(v).replace(/'/g, `'\\''`)}'`;
+  const shq = (v: unknown) => `'${String(v).replace(/'/g, `'\\''`)}'`;
   api.addFolderSetup({
-    html: (ws, { allowed }) => {
+    html: (ws: string, { allowed }: FolderSetupContext) => {
       if (!canUpsun(ws, allowed, workspaceDir(ws))) return '';
       return `<div class="uk-margin-small-top folder-upsun">
             <span class="uk-text-meta">Upsun:</span>
@@ -144,22 +146,22 @@ module.exports.register = (api) => {
             </div>
           </div>`;
     },
-    steps: (ws, name, form, { allowed }) => {
+    steps: (ws: string, name: string, form: Form, { allowed }: FolderSetupContext) => {
       if (form.upsun !== 'link' || !canUpsun(ws, allowed, workspaceDir(ws))) return [];
       return [`( cd ${shq(name)} && { git rev-parse --git-dir >/dev/null 2>&1 || git init -q; } )`,
         `bash ${SCRIPT} ${shq(name)} --link ${shq(form.upsun_id)}`];
     },
-    prompt: (ws, name, form) => {
+    prompt: (_ws: string, _name: string, form: Form) => {
       if (form.upsun !== 'create') return [];
       return [`Create a new Upsun project for this folder and deploy it. Before creating anything billed, ask me which organization, region and plan to use, and wait for my answer. `
         + 'If a setup session is configuring DDEV here, wait until .ddev/config.yaml exists. Then: git init if needed, upsun project:create, link it with `upsun project:set-remote`, '
         + 'write .upsun/config.yaml to match .ddev/config.yaml (PHP version, database, docroot), commit, and push to main. Never put a secret or key into the repository.'];
     },
-    problem: (ws, form, { allowed }) => {
+    problem: (ws: string, form: Form, { allowed }: FolderSetupContext) => {
       if (form.upsun !== 'link' && form.upsun !== 'create') return '';
       if (!canUpsun(ws, allowed, workspaceDir(ws))) return 'This workspace does not link projects to Upsun.';
       if (form.upsun === 'link' && !UPSUN_ID_RE.test(String(form.upsun_id || ''))) return 'An Upsun project id is 8 to 20 lowercase letters and digits.';
       return '';
     },
   });
-};
+}
