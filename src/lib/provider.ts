@@ -5,11 +5,11 @@
  * their live URLs from the upsun CLI inside the dashboard container, with the API token from
  * plugin.upsun.settings.yml injected per call; the pulls, the deploy log, the activities and the
  * deploy itself go through cmd-tools-upsun.sh in a screen session. The surface itself (menu, modal,
- * pull flow, chip, folder section) is @webship/workspace-hosting's.
+ * pull flow, chip, folder section) is @webship.co/workspace-hosting's.
  */
 
-import type { PluginApi, PluginLib } from '@webship/workspace-plugin-api';
-import type { EnvInfo, EnvRow, HostingLink, HostingProvider } from '@webship/workspace-hosting';
+import type { PluginApi, PluginLib } from '@webship.co/workspace-plugin-api';
+import type { EnvInfo, EnvRow, HostingLink, HostingProvider } from '@webship.co/workspace-hosting';
 
 import { upsunLinkOf } from './link';
 

@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { HostingLink } from '@webship/workspace-hosting';
+import type { HostingLink } from '@webship.co/workspace-hosting';
 
 export interface UpsunLink extends HostingLink {
   id: string | null;
