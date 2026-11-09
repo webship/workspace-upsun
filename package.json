@@ -1,6 +1,6 @@
 {
   "name": "@webship.co/workspace-upsun",
-  "version": "1.0.0-rc1",
+  "version": "1.0.0",
   "description": "Upsun for Webship Workspace: the UPSUN menu on every site row, environments and live URLs, get database and files, deploy, activities and logs, link from the command line, the upsun CLI in the dashboard container. A provider of @webship.co/workspace-hosting.",
   "main": "dist/src/index.js",
   "license": "ISC",
@@ -80,11 +80,11 @@
     "README.md"
   ],
   "dependencies": {
-    "@webship.co/workspace-hosting": "^1.0.0-rc1"
+    "@webship.co/workspace-hosting": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "@webship.co/workspace-plugin-api": "^1.0.0-rc1",
+    "@webship.co/workspace-plugin-api": "^1.0.0",
     "typescript": "^5.9.0"
   },
   "publishConfig": {
