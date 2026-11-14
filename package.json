@@ -17,6 +17,23 @@
   "workspacePlugin": {
     "name": "upsun",
     "label": "Upsun",
+    "needs": {
+      "plugins": [
+        [
+          "dev",
+          "test",
+          "demos",
+          "sandboxes",
+          "projects"
+        ]
+      ],
+      "commands": [
+        {
+          "command": "upsun",
+          "hint": "https://docs.upsun.com/administration/cli.html"
+        }
+      ]
+    },
     "settingsFile": "plugin.upsun.settings.yml",
     "settingsTemplate": "config/plugin.upsun.settings.yml",
     "labels": "config/settings.labels.yml",

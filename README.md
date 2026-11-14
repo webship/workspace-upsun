@@ -19,6 +19,22 @@ The same four steps are buttons on the dashboard's **Settings → Plugins** page
 idempotent and says when the dashboard container needs `ddev restart` (it does the first time: the
 compose file mounts `~/.upsun-cli`).
 
+## What it needs
+
+A workspace starts empty, so the manifest says what else this plugin needs (`needs`):
+
+- one sites folder: `dev`, `test`, `demos`, `sandboxes`, `projects` (`dev` is the one added when none is there). `cmd-tools-upsun.sh`, which the menu's verbs run, is placed in it, and the menu is on its project rows.
+- on the machine: `upsun`, the provider's CLI (https://docs.upsun.com/administration/cli.html).
+
+`--require` says so, `--activate` and `--install` stop until the workspace has a sites folder, and `--with-needs` adds it first. A missing command is said and never added:
+
+```bash
+bash core/scripts/plugins.sh --activate upsun --with-needs
+bash core/scripts/plugins.sh --check upsun      # each command: found, with its version, or missing, with how to install it
+```
+
+A workspace that knows none of this (Webship Workspace 1.0.8 and older) ignores the keys: add a sites folder yourself, then `--install upsun` again.
+
 ## What the package holds
 
 | Path | What it is |
