@@ -19,6 +19,23 @@ The same four steps are buttons on the dashboard's **Settings → Plugins** page
 idempotent and says when the dashboard container needs `ddev restart` (it does the first time: the
 compose file mounts `~/.upsun-cli`).
 
+## The items it carries
+
+The workspace is container-based (DDEV by default). Each item lands in the folder of its kind, when
+that folder is an active workspace folder, is listed there like any other item, and is installed
+into Claude Code from there:
+
+| What | Lands in | What it is for |
+| --- | --- | --- |
+| The agent `upsun-deployer` | `ai-agents/` | Says whether a site is linked to Upsun and to what, reads its environments and its log, brings the live data here when asked, tests it before a deploy, and hands over the deploy line |
+| The skill `upsun-hosting` | `ai-skills/` | Every entry of the UPSUN menu and the command behind it, each option of `cmd-tools-upsun.sh`, the link, the keys of `plugin.upsun.settings.yml` |
+| The command `/upsun-status` | `ai-commands/` | `/upsun-status <project>`: the link and the environments. Read-only |
+| The prompt `upsun-test-then-deploy` | `ai-prompts/` | The launch command of a session that checks a site, runs its webship-js suite when it has one, and gives the deploy line |
+
+The plugin keeps its one command, `cmd-tools-upsun.sh`; no other was added. The item bodies are plain Markdown any AI command-line assistant can follow; Claude Code is the default shape (frontmatter, the launch command of the prompt). A site that carries a webship-js suite is tested by the workspace's own `cmd-tools-testing.sh <project> --run` before a deploy, when it is there.
+
+How the items are laid out and checked: [docs/plugin-items-pattern.md](docs/plugin-items-pattern.md).
+
 ## What it needs
 
 A workspace starts empty, so the manifest says what else this plugin needs (`needs`):
@@ -35,6 +52,8 @@ bash core/scripts/plugins.sh --check upsun      # each command: found, with its 
 
 A workspace that knows none of this (Webship Workspace 1.0.8 and older) ignores the keys: add a sites folder yourself, then `--install upsun` again.
 
+It also needs the AI folders its items are placed in (`needs.plugins`): `ai-agents`, `ai-skills`, `ai-commands` and `ai-prompts`, beside the sites folder. `--with-needs` adds what is missing first. A kind whose folder is not an active workspace folder is skipped, and the install says so.
+
 ## What the package holds
 
 | Path | What it is |
@@ -50,5 +69,10 @@ A workspace that knows none of this (Webship Workspace 1.0.8 and older) ignores 
 | `ddev/docker-compose.upsun-cli.yaml` | Mounts the host's upsun session into the dashboard container |
 | `config/plugin.upsun.settings.yml` | The settings template (`cli_token`) |
 | `config/theme.upsun.yml` | A dashboard theme in Upsun's colours |
+| `ai/agents/upsun-deployer.md` | The agent `upsun-deployer` |
+| `ai/skills/upsun-hosting/` | The skill `upsun-hosting` |
+| `ai/commands/upsun-status.md` | The command `/upsun-status` |
+| `ai/prompts/upsun-test-then-deploy.md` | The prompt `upsun-test-then-deploy` |
+| `tests/items.test.ts` | The shape of every item, and that it names nothing the plugin does not have |
 
 The `workspacePlugin` block in `package.json` is the manifest the installer reads.
