@@ -19,6 +19,12 @@ import { upsunProvider } from './lib/provider';
 export { upsunLinkOf } from './lib/link';
 export { upsunProvider };
 
+/** The AI items the installer places: agents in ai-agents/, skills in ai-skills/, commands in ai-commands/, prompts in ai-prompts/. */
+export const AGENTS: string[] = ['upsun-deployer'];
+export const SKILLS: string[] = ['upsun-hosting'];
+export const AI_COMMANDS: string[] = ['upsun-status'];
+export const PROMPTS: string[] = ['upsun-test-then-deploy'];
+
 export function register(api: PluginApi): void {
   registerHosting(api, upsunProvider(api));
 }
