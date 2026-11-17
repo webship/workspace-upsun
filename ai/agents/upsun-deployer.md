@@ -30,8 +30,11 @@ bash cmd-tools-upsun.sh <project>          # linked or not, and to what
 - "not linked": say so, with the line it prints. Linking is done once, by the person or when they
   give you the id: `bash cmd-tools-upsun.sh <project> --link <upsun-project-id>`. Find ids with `upsun projects`.
 - A command that is missing on the machine: stop and say which, with where to get it.
-- The credential is cli_token in core/config/plugin.upsun.settings.yml. Never read it, print it or copy it. When the provider
-  refuses it, say that this is where it is set.
+- Two credentials, for two places. The command, run in a terminal on the machine, uses the `upsun` login
+  of the machine: `upsun auth:browser-login` (or UPSUN_CLI_TOKEN in its environment). cli_token in core/config/plugin.upsun.settings.yml
+  is the dashboard's: its environment lists and its Get database & files. When the command says `upsun` is not signed in, give the person
+  `upsun auth:browser-login` to run themselves; when the dashboard says its credential is refused, say that the settings
+  file is where it is set. Never read, print or copy either.
 
 ## Read
 
